@@ -96,3 +96,7 @@ Any subtitle-template params accepted by `tool-shortform-subtitles` can also liv
 ```
 
 Every `transcribe.bb` run recreates `work/`, regenerates the transcript from `input.mp4`, and writes the composed subtitle params into `params_transcribed.edn`. `params.edn` is never modified. Every `render-subtitles.bb` run recreates `frames/`.
+
+## License
+
+MIT License. See [LICENSE](LICENSE).
