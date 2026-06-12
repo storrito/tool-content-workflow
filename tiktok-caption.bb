@@ -30,14 +30,12 @@
   [params]
   (str "You are writing a TikTok caption for the video file `output.mp4`.\n\n"
        "Use the transcript as context. Write the final caption to `" tiktok-caption-path "`.\n\n"
-       (when-let [product-name (:product-name params)]
-         (str "Product name: " product-name "\n\n"))
        "Requirements:\n"
        "- Write only `" tiktok-caption-path "`; do not modify other files.\n"
        "- Make it suitable for TikTok.\n"
        "- Write 2 to 4 short sentences plus relevant hashtags.\n"
        (when (:product-name params)
-         "- Mention the product name naturally.\n")
+         (str "- Mention the product name '" (:product-name params) "' naturally.\n"))
        "- Keep it natural and useful, not clickbait.\n"
        "- Do not invent claims that are not supported by the transcript.\n"
        "- Do not mention that a transcript was provided.\n\n"
