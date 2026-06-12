@@ -3,7 +3,7 @@
 Convention-based local workflow for smartphone videos. `input.mp4` is expected to be a vertical 9:16 video. If the phone stored the orientation as rotation metadata, the final overlay step bakes that rotation into the pixels and normalizes the video to `1080x1920`:
 
 1. transcribe `input.mp4` with [`storrito/tool-speech-to-text`](https://github.com/storrito/tool-speech-to-text)
-2. merge the transcript into `params.edn`
+2. merge the transcript into `params_transcribed.edn`
 3. render animated transparent subtitle frames with [`storrito/tool-shortform-subtitles`](https://github.com/storrito/tool-shortform-subtitles)
 4. overlay the frames onto a physical `1080x1920` MP4 with FFmpeg running in Docker, without relying on rotation metadata
 
@@ -30,10 +30,18 @@ content-workflow/
 {:template :caption-clip-wipe}
 ```
 
-Run from the project root:
+Run the full workflow from the project root:
 
 ```bash
-./subtitle-video.bb
+./workflow.bb
+```
+
+Or rerun a single step while debugging:
+
+```bash
+./transcribe.bb
+./render-subtitles.bb
+./overlay-video.bb
 ```
 
 ## Outputs
@@ -45,6 +53,9 @@ content-workflow/
   input.mp4
   params.edn              # optional user input, never modified
   params_transcribed.edn  # generated params + :segments, :words, and :duration
+  work/                   # freshly generated intermediate files
+    transcript.edn
+    output_with_rotation_metadata.mp4
   frames/                 # freshly generated subtitle frames
     frame_000001.png
     frame_000002.png
@@ -53,6 +64,13 @@ content-workflow/
 ```
 
 `output.mp4` is always overwritten.
+
+## Scripts
+
+- `workflow.bb` runs all steps in order.
+- `transcribe.bb` writes `work/transcript.edn` and `params_transcribed.edn`.
+- `render-subtitles.bb` reads `params_transcribed.edn` and writes `frames/`.
+- `overlay-video.bb` reads `input.mp4` and `frames/`, then writes `output.mp4`.
 
 ## Params
 
@@ -70,4 +88,4 @@ Any subtitle-template params accepted by `tool-shortform-subtitles` can also liv
               "video" "🎬"}}
 ```
 
-Every run regenerates the transcript from `input.mp4` and writes it into `params_transcribed.edn`. `params.edn` is never modified. `frames/` is freshly generated on every run.
+Every `transcribe.bb` run recreates `work/`, regenerates the transcript from `input.mp4`, and writes the composed subtitle params into `params_transcribed.edn`. `params.edn` is never modified. Every `render-subtitles.bb` run recreates `frames/`.

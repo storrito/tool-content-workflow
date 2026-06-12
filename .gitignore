@@ -1,7 +1,7 @@
 tools/
+work/
 frames/
 output.mp4
-.output_with_rotation_metadata.mp4
 input.mp4
 params.edn
 params_transcribed.edn
