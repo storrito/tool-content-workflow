@@ -2,6 +2,7 @@ tools/
 work/
 frames/
 output.mp4
+tiktok-caption.txt
 input.mp4
 params.edn
 params_transcribed.edn

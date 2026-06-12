@@ -3,7 +3,16 @@
 (ns transcribe
   (:require [babashka.fs :as fs]
             [babashka.process :as p]
+            [clojure.edn :as edn]
             [content-workflow.common :refer :all]))
+
+(defn read-transcript
+  []
+  (when (fs/exists? transcript-path)
+    (let [transcript (edn/read-string (slurp transcript-path))]
+      (when-not (map? transcript)
+        (die! (str "Transcript EDN must be a map: " transcript-path)))
+      transcript)))
 
 (defn transcribe!
   []

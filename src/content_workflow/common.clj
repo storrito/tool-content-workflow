@@ -136,14 +136,6 @@
            :out
            str/trim)))
 
-(defn read-transcript
-  []
-  (when (fs/exists? transcript-path)
-    (let [transcript (edn/read-string (slurp transcript-path))]
-      (when-not (map? transcript)
-        (die! (str "Transcript EDN must be a map: " transcript-path)))
-      transcript)))
-
 (defn overlay-filter
   []
   (format "[0:v]fps=%d,scale=%d:%d,setsar=1[base];[base][1:v]overlay=0:0:format=auto:eof_action=pass[v]"
