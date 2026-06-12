@@ -5,6 +5,10 @@
             [babashka.process :as p]
             [content-workflow.common :refer :all]))
 
+(def video-bitrate "6M")
+(def video-maxrate "6M")
+(def video-bufsize "12M")
+
 (defn render-output-with-rotation-metadata!
   []
   (let [audio-args (when (audio?)
@@ -24,7 +28,9 @@
                    "-map" "0:a?"
                    "-c:v" "libx264"
                    "-pix_fmt" "yuv420p"
-                   "-crf" "18"
+                   "-b:v" video-bitrate
+                   "-maxrate" video-maxrate
+                   "-bufsize" video-bufsize
                    "-preset" "medium"]
                   (concat audio-args
                           ["-movflags" "+faststart"
