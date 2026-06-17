@@ -84,7 +84,7 @@ content-workflow/
 - `tiktok-caption.bb` reads `params_transcribed.edn` and asks `pi` to write `work/tiktok-caption.txt`.
 - `youtube-shorts-caption.bb` reads `params_transcribed.edn` and `youtube-shorts-base-caption.txt`, then asks `pi` to write `work/youtube-shorts-caption.txt`.
 - `render-subtitles.bb` reads `params_transcribed.edn` and writes `frames/`.
-- `overlay-video.bb` reads `input.mp4` and `frames/`, then writes `output.mp4` with a 6 Mbit/s video bitrate limit.
+- `overlay-video.bb` reads `input.mp4` and `frames/`, then writes `output.mp4` with a 6 Mbit/s video bitrate limit and the configured speed-up.
 
 ## Params
 
@@ -92,7 +92,8 @@ Supported optional workflow params:
 
 ```clojure
 {:template :caption-clip-wipe ; or :caption-emoji-pop
- :product-name "Storrito"}   ; optional, used by tiktok-caption.bb
+ :product-name "Storrito"    ; optional, used by caption scripts
+ :speed-up 1.12}             ; optional, used by overlay-video.bb
 ```
 
 Any subtitle-template params accepted by `tool-shortform-subtitles` can also live in the same map, for example:
@@ -104,6 +105,8 @@ Any subtitle-template params accepted by `tool-shortform-subtitles` can also liv
 ```
 
 Every `transcribe.bb` run recreates `work/`, regenerates the transcript from `input.mp4`, and writes the composed subtitle params into `params_transcribed.edn`. `params.edn` is never modified. Every `render-subtitles.bb` run recreates `frames/`.
+
+`overlay-video.bb` speeds up the final video and subtitle frames by `:speed-up`. The default is `1.12`, which makes slow speech a little tighter without adding an extra video encoding step before overlaying.
 
 ## License
 

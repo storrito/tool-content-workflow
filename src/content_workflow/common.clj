@@ -135,8 +135,3 @@
                                      input-path]))
            :out
            str/trim)))
-
-(defn overlay-filter
-  []
-  (format "[0:v]fps=%d,scale=%d:%d,setsar=1[base];[base][1:v]overlay=0:0:format=auto:eof_action=pass[v]"
-          fps output-width output-height))

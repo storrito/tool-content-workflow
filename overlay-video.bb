@@ -8,11 +8,36 @@
 (def video-bitrate "6M")
 (def video-maxrate "6M")
 (def video-bufsize "12M")
+(def default-speed-up 1.12)
+
+(defn parse-speed-up
+  [params]
+  (let [value (or (:speed-up params) default-speed-up)
+        speed-up (cond
+                   (number? value) (double value)
+                   (string? value) (Double/parseDouble value)
+                   :else (die! (str "Invalid :speed-up value: " value)))]
+    (when-not (pos? speed-up)
+      (die! (str ":speed-up must be positive: " speed-up)))
+    speed-up))
+
+(defn overlay-filter
+  [speed-up has-audio?]
+  (str (format "[0:v]setpts=PTS/%.6f,fps=%d,scale=%d:%d,setsar=1[base];"
+               speed-up fps output-width output-height)
+       (format "[1:v]setpts=PTS/%.6f[sub];" speed-up)
+       "[base][sub]overlay=0:0:format=auto:eof_action=pass[v]"
+       (when has-audio?
+         (format ";[0:a]atempo=%.6f[a]" speed-up))))
 
 (defn render-output-with-rotation-metadata!
   []
-  (let [audio-args (when (audio?)
-                     ["-c:a" "aac" "-b:a" "160k"])]
+  (let [speed-up (parse-speed-up (read-params))
+        has-audio? (audio?)
+        audio-args (when has-audio?
+                     ["-map" "[a]"
+                      "-c:a" "aac"
+                      "-b:a" "160k"])]
     (apply p/shell
            {:inherit true}
            (docker-media-cmd
@@ -23,9 +48,8 @@
                    "-framerate" (str fps)
                    "-start_number" "1"
                    "-i" frame-pattern
-                   "-filter_complex" (overlay-filter)
+                   "-filter_complex" (overlay-filter speed-up has-audio?)
                    "-map" "[v]"
-                   "-map" "0:a?"
                    "-c:v" "libx264"
                    "-pix_fmt" "yuv420p"
                    "-b:v" video-bitrate
