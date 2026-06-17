@@ -7,7 +7,7 @@
             [clojure.string :as str]
             [content-workflow.common :refer :all]))
 
-(def tiktok-caption-path "tiktok-caption.txt")
+(def tiktok-caption-path (str (fs/path work-dir "tiktok-caption.txt")))
 (def tiktok-caption-prompt-path (str (fs/path work-dir "tiktok-caption-prompt.md")))
 
 (defn read-transcribed-params
