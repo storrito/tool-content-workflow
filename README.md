@@ -108,6 +108,16 @@ Every `transcribe.bb` run recreates `work/`, regenerates the transcript from `in
 
 `overlay-video.bb` speeds up the final video and subtitle frames by `:speed-up`. The default is `1.12`, which makes slow speech a little tighter without adding an extra video encoding step before overlaying.
 
+## Storrito team instructions
+
+Storrito team members can copy the shared Storrito defaults into the project root with:
+
+```bash
+./storrito-team-config.bb
+```
+
+This copies the files from `storrito-config/` without overwriting existing local config files. The workflow itself never invokes this helper.
+
 ## License
 
 MIT License. See [LICENSE](LICENSE).
