@@ -10,10 +10,10 @@ Convention-based local workflow for smartphone videos. `input.mp4` is expected t
 
 ## Requirements
 
-- Babashka (`bb`)
-- Docker
-- Git for first-time tool checkout
-- `pi` on the host for TikTok caption generation
+- [Babashka (`bb`)](https://github.com/babashka/babashka#quickstart)
+- [Docker](https://docs.docker.com/get-started/)
+- [Git](https://docs.github.com/en/get-started/git-basics) for first-time tool checkout
+- [pi](https://github.com/earendil-works/pi/tree/main/packages/coding-agent#quick-start) on the host for TikTok caption generation
 
 The first run clones the two tool repositories into `tools/`. The transcription tool's first Docker build downloads several GB of model/runtime data. FFmpeg/FFprobe are run through the Docker image `jrottenberg/ffmpeg:7.1-ubuntu`, so the host does not need a local FFmpeg install.
 
