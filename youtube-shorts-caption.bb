@@ -9,6 +9,7 @@
 
 (def youtube-shorts-base-caption-path "youtube-shorts-base-caption.txt")
 (def youtube-shorts-caption-path (str (fs/path work-dir "youtube-shorts-caption.txt")))
+(def youtube-shorts-title-path (str (fs/path work-dir "youtube-shorts-title.txt")))
 (def youtube-shorts-caption-prompt-path (str (fs/path work-dir "youtube-shorts-caption-prompt.md")))
 
 (defn read-transcribed-params
@@ -35,12 +36,14 @@
 
 (defn prompt
   [params base-caption]
-  (str "You are writing a YouTube Shorts caption/description for the video file `output.mp4`.\n\n"
+  (str "You are writing YouTube Shorts metadata for the video file `output.mp4`.\n\n"
        "Use the transcript as context and use the base caption as a starting point/style guide. "
-       "Write the final caption to `" youtube-shorts-caption-path "`.\n\n"
+       "Write the final caption to `" youtube-shorts-caption-path "` and the final title to `" youtube-shorts-title-path "`.\n\n"
        "Requirements:\n"
-       "- Write only `" youtube-shorts-caption-path "`; do not modify other files.\n"
-       "- Make it suitable for YouTube Shorts.\n"
+       "- Write only `" youtube-shorts-caption-path "` and `" youtube-shorts-title-path "`; do not modify other files.\n"
+       "- Make both the title and caption suitable for YouTube Shorts.\n"
+       "- Write a clear, searchable title for `" youtube-shorts-title-path "`.\n"
+       "- Keep the title concise and avoid clickbait.\n"
        "- YouTube Shorts allows a longer caption than TikTok, so write a useful caption with 3 to 6 short sentences plus relevant hashtags.\n"
        (when (:product-name params)
          (str "- Mention the product name '" (:product-name params) "' naturally.\n"))
@@ -63,11 +66,16 @@
     (spit youtube-shorts-caption-prompt-path caption-prompt)
     (when (fs/exists? youtube-shorts-caption-path)
       (fs/delete youtube-shorts-caption-path))
+    (when (fs/exists? youtube-shorts-title-path)
+      (fs/delete youtube-shorts-title-path))
     (p/shell {:inherit true}
              "pi" "--print" "--no-session" "--thinking" (pi-thinking params)
              (str "@" youtube-shorts-caption-prompt-path))
     (when-not (fs/exists? youtube-shorts-caption-path)
       (die! (str "pi did not write " youtube-shorts-caption-path)))
-    (println "Wrote" youtube-shorts-caption-path)))
+    (when-not (fs/exists? youtube-shorts-title-path)
+      (die! (str "pi did not write " youtube-shorts-title-path)))
+    (println "Wrote" youtube-shorts-caption-path)
+    (println "Wrote" youtube-shorts-title-path)))
 
 (apply -main *command-line-args*)

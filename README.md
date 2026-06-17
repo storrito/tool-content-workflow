@@ -5,7 +5,7 @@ Convention-based local workflow for smartphone videos. `input.mp4` is expected t
 1. transcribe `input.mp4` with [`storrito/tool-speech-to-text`](https://github.com/storrito/tool-speech-to-text)
 2. improve/correct the transcript with `pi`, add subtitle metadata like `:highlight? true`, and write `params_transcribed.edn`
 3. generate `tiktok-caption.txt` with `pi` using the transcript as context
-4. generate `youtube-shorts-caption.txt` with `pi` using the transcript and `youtube-shorts-base-caption.txt` as context
+4. generate `youtube-shorts-caption.txt` and `youtube-shorts-title.txt` with `pi` using the transcript and `youtube-shorts-base-caption.txt` as context
 5. render animated transparent subtitle frames with [`storrito/tool-shortform-subtitles`](https://github.com/storrito/tool-shortform-subtitles)
 6. overlay the frames onto a physical `1080x1920` MP4 with FFmpeg running in Docker, without relying on rotation metadata
 
@@ -70,6 +70,7 @@ content-workflow/
     tiktok-caption.txt
     youtube-shorts-caption-prompt.md
     youtube-shorts-caption.txt
+    youtube-shorts-title.txt
     output_with_rotation_metadata.mp4
   frames/                 # freshly generated subtitle frames
     frame_000001.png
@@ -86,7 +87,7 @@ content-workflow/
 - `transcribe.bb` writes `work/transcript.edn`.
 - `improve-transcript.bb` reads `work/transcript.edn`, asks `pi` to correct the transcript/add subtitle metadata, writes `work/transcript-improved.edn`, and writes `params_transcribed.edn`.
 - `tiktok-caption.bb` reads `params_transcribed.edn` and asks `pi` to write `work/tiktok-caption.txt`.
-- `youtube-shorts-caption.bb` reads `params_transcribed.edn` and `youtube-shorts-base-caption.txt`, then asks `pi` to write `work/youtube-shorts-caption.txt`.
+- `youtube-shorts-caption.bb` reads `params_transcribed.edn` and `youtube-shorts-base-caption.txt`, then asks `pi` to write `work/youtube-shorts-caption.txt` and `work/youtube-shorts-title.txt`.
 - `render-subtitles.bb` reads `params_transcribed.edn` and writes `frames/`.
 - `overlay-video.bb` reads `input.mp4` and `frames/`, then writes `output.mp4` with a 6 Mbit/s video bitrate limit and the configured speed-up.
 
