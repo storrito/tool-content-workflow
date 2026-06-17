@@ -10,6 +10,7 @@
 (def speech-to-text-repo "https://github.com/storrito/tool-speech-to-text.git")
 (def shortform-subtitles-repo "https://github.com/storrito/tool-shortform-subtitles.git")
 (def default-ffmpeg-image "jrottenberg/ffmpeg:7.1-ubuntu")
+(def default-pi-thinking "high")
 (def params-path "params.edn")
 (def input-path "input.mp4")
 (def transcribed-params-path "params_transcribed.edn")
@@ -38,6 +39,11 @@
     (or (keyword? value) (symbol? value)) (name value)
     (string? value) value
     :else (str value)))
+
+(defn pi-thinking
+  [params]
+  (or (some-> (:pi-thinking params) value-name)
+      default-pi-thinking))
 
 (defn validate-template
   [template]

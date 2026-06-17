@@ -8,7 +8,7 @@
 (defn -main
   [& _]
   (when-not (fs/exists? transcribed-params-path)
-    (die! (str "Missing transcribed params. Run ./transcribe.bb first: " transcribed-params-path)))
+    (die! (str "Missing transcribed params. Run ./improve-transcript.bb first: " transcribed-params-path)))
   (when (fs/exists? frames-dir)
     (fs/delete-tree frames-dir))
   (let [render (shortform-subtitles-path)]

@@ -24,23 +24,11 @@
   (or (read-transcript)
       (die! (str "Transcription did not write: " transcript-path))))
 
-(defn params-with-transcript
-  [params transcript]
-  (-> params
-      (dissoc :fit :cpu :cpu? :tools-dir :speech-to-text-dir :shortform-subtitles-dir)
-      (merge transcript)
-      (assoc :template (keyword (validate-template (:template params)))
-             :duration (video-duration-seconds))))
-
 (defn -main
   [& _]
   (when-not (fs/exists? input-path)
     (die! (str "Expected input video by convention: " input-path)))
-  (let [params (read-params)
-        transcript (transcribe!)
-        transcribed-params (params-with-transcript params transcript)]
-    (write-edn! transcribed-params-path transcribed-params)
-    (println "Wrote" transcript-path)
-    (println "Wrote" transcribed-params-path)))
+  (transcribe!)
+  (println "Wrote" transcript-path))
 
 (apply -main *command-line-args*)

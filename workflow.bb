@@ -7,6 +7,7 @@
 (defn -main
   [& _]
   (p/shell {:inherit true} "./transcribe.bb")
+  (p/shell {:inherit true} "./improve-transcript.bb")
   (p/shell {:inherit true} "./tiktok-caption.bb")
   (p/shell {:inherit true} "./youtube-shorts-caption.bb")
   (p/shell {:inherit true} "./render-subtitles.bb")

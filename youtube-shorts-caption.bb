@@ -14,7 +14,7 @@
 (defn read-transcribed-params
   []
   (when-not (fs/exists? transcribed-params-path)
-    (die! (str "Missing transcribed params. Run ./transcribe.bb first: " transcribed-params-path)))
+    (die! (str "Missing transcribed params. Run ./improve-transcript.bb first: " transcribed-params-path)))
   (let [params (edn/read-string (slurp transcribed-params-path))]
     (when-not (map? params)
       (die! (str "Transcribed params EDN must be a map: " transcribed-params-path)))
@@ -63,7 +63,9 @@
     (spit youtube-shorts-caption-prompt-path caption-prompt)
     (when (fs/exists? youtube-shorts-caption-path)
       (fs/delete youtube-shorts-caption-path))
-    (p/shell {:inherit true} "pi" "--print" "--no-session" (str "@" youtube-shorts-caption-prompt-path))
+    (p/shell {:inherit true}
+             "pi" "--print" "--no-session" "--thinking" (pi-thinking params)
+             (str "@" youtube-shorts-caption-prompt-path))
     (when-not (fs/exists? youtube-shorts-caption-path)
       (die! (str "pi did not write " youtube-shorts-caption-path)))
     (println "Wrote" youtube-shorts-caption-path)))

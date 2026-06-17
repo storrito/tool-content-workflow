@@ -3,7 +3,7 @@
 Convention-based local workflow for smartphone videos. `input.mp4` is expected to be a vertical 9:16 video. If the phone stored the orientation as rotation metadata, the final overlay step bakes that rotation into the pixels and normalizes the video to `1080x1920`:
 
 1. transcribe `input.mp4` with [`storrito/tool-speech-to-text`](https://github.com/storrito/tool-speech-to-text)
-2. merge the transcript into `params_transcribed.edn`
+2. improve/correct the transcript with `pi`, add subtitle metadata like `:highlight? true`, and write `params_transcribed.edn`
 3. generate `tiktok-caption.txt` with `pi` using the transcript as context
 4. generate `youtube-shorts-caption.txt` with `pi` using the transcript and `youtube-shorts-base-caption.txt` as context
 5. render animated transparent subtitle frames with [`storrito/tool-shortform-subtitles`](https://github.com/storrito/tool-shortform-subtitles)
@@ -45,6 +45,7 @@ Or rerun a single step while debugging:
 
 ```bash
 ./transcribe.bb
+./improve-transcript.bb
 ./tiktok-caption.bb
 ./youtube-shorts-caption.bb
 ./render-subtitles.bb
@@ -63,6 +64,8 @@ content-workflow/
   youtube-shorts-base-caption.txt # required user input for YouTube Shorts captions
   work/                        # freshly generated intermediate files
     transcript.edn
+    improve-transcript-prompt.md
+    transcript-improved.edn
     tiktok-caption-prompt.md
     tiktok-caption.txt
     youtube-shorts-caption-prompt.md
@@ -80,7 +83,8 @@ content-workflow/
 ## Scripts
 
 - `workflow.bb` runs all steps in order.
-- `transcribe.bb` writes `work/transcript.edn` and `params_transcribed.edn`.
+- `transcribe.bb` writes `work/transcript.edn`.
+- `improve-transcript.bb` reads `work/transcript.edn`, asks `pi` to correct the transcript/add subtitle metadata, writes `work/transcript-improved.edn`, and writes `params_transcribed.edn`.
 - `tiktok-caption.bb` reads `params_transcribed.edn` and asks `pi` to write `work/tiktok-caption.txt`.
 - `youtube-shorts-caption.bb` reads `params_transcribed.edn` and `youtube-shorts-base-caption.txt`, then asks `pi` to write `work/youtube-shorts-caption.txt`.
 - `render-subtitles.bb` reads `params_transcribed.edn` and writes `frames/`.
@@ -93,6 +97,7 @@ Supported optional workflow params:
 ```clojure
 {:template :caption-clip-wipe ; or :caption-emoji-pop
  :product-name "Storrito"    ; optional, used by caption scripts
+ :pi-thinking :high          ; optional, used by pi calls
  :speed-up 1.12}             ; optional, used by overlay-video.bb
 ```
 
@@ -104,7 +109,7 @@ Any subtitle-template params accepted by `tool-shortform-subtitles` can also liv
               "video" "🎬"}}
 ```
 
-Every `transcribe.bb` run recreates `work/`, regenerates the transcript from `input.mp4`, and writes the composed subtitle params into `params_transcribed.edn`. `params.edn` is never modified. Every `render-subtitles.bb` run recreates `frames/`.
+Every `transcribe.bb` run recreates `work/` and regenerates the raw transcript from `input.mp4`. `improve-transcript.bb` writes the corrected transcript to `work/transcript-improved.edn` and writes the composed subtitle params into `params_transcribed.edn`. `params.edn` is never modified. Every `render-subtitles.bb` run recreates `frames/`.
 
 `overlay-video.bb` speeds up the final video and subtitle frames by `:speed-up`. The default is `1.12`, which makes slow speech a little tighter without adding an extra video encoding step before overlaying.
 
