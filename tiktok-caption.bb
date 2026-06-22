@@ -51,7 +51,9 @@
     (spit tiktok-caption-prompt-path caption-prompt)
     (when (fs/exists? tiktok-caption-path)
       (fs/delete tiktok-caption-path))
-    (p/shell {:inherit true}
+    (println "Asking pi to write TikTok caption")
+    (flush)
+    (p/shell {:out :inherit :err :inherit :in ""}
              "pi" "--print" "--no-session" "--thinking" (pi-thinking params)
              (str "@" tiktok-caption-prompt-path))
     (when-not (fs/exists? tiktok-caption-path)

@@ -68,7 +68,9 @@
       (fs/delete youtube-shorts-caption-path))
     (when (fs/exists? youtube-shorts-title-path)
       (fs/delete youtube-shorts-title-path))
-    (p/shell {:inherit true}
+    (println "Asking pi to write YouTube Shorts caption and title")
+    (flush)
+    (p/shell {:out :inherit :err :inherit :in ""}
              "pi" "--print" "--no-session" "--thinking" (pi-thinking params)
              (str "@" youtube-shorts-caption-prompt-path))
     (when-not (fs/exists? youtube-shorts-caption-path)
