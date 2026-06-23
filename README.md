@@ -52,6 +52,22 @@ Or rerun a single step while debugging:
 ./overlay-video.bb
 ```
 
+## Internal web UI
+
+The repository also includes a small internal web UI for teammates who should not need to run the workflow from a terminal. It runs on Babashka with its built-in `http-kit` server, Hiccup rendering, Basic Auth, and HTMX polling.
+
+Set credentials and start the server:
+
+```bash
+CONTENT_WORKFLOW_USER=marketing \
+CONTENT_WORKFLOW_PASSWORD='change-me' \
+./server.bb
+```
+
+Then open `http://localhost:8080`, upload `input.mp4`, fill in the form, and wait for the progress page to show the download links.
+
+The web UI runs one job at a time and uses the same root-level workflow conventions as the scripts. Starting a new job replaces the previous generated input/output files.
+
 ## Outputs
 
 The workflow writes files in the project root:
@@ -84,6 +100,7 @@ content-workflow/
 ## Scripts
 
 - `workflow.bb` runs all steps in order.
+- `server.bb` starts the internal upload/progress/download web UI.
 - `transcribe.bb` writes `work/transcript.edn`.
 - `improve-transcript.bb` reads `work/transcript.edn`, asks `pi` to correct the transcript/add subtitle metadata, writes `work/transcript-improved.edn`, and writes `params_transcribed.edn`.
 - `tiktok-caption.bb` reads `params_transcribed.edn` and asks `pi` to write `work/tiktok-caption.txt`.

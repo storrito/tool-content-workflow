@@ -123,7 +123,9 @@
     (spit improve-transcript-prompt-path improve-prompt)
     (when (fs/exists? improved-transcript-path)
       (fs/delete improved-transcript-path))
-    (p/shell {:inherit true}
+    (println "Asking pi to improve transcript")
+    (flush)
+    (p/shell {:out :inherit :err :inherit :in ""}
              "pi" "--print" "--no-session" "--thinking" (pi-thinking params)
              (str "@" improve-transcript-prompt-path))
     (let [improved-transcript (read-improved-transcript)

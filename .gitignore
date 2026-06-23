@@ -6,3 +6,7 @@
 /input.mp4
 /params.edn
 /params_transcribed.edn
+
+/server-workflow.log
+/input.mp4.upload
+/.cpcache/
