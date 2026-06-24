@@ -67,17 +67,19 @@
     (fs/create-dirs parent))
   (spit path (with-out-str (pprint/pprint value))))
 
-(defn clone-if-missing!
+(defn sync-repo!
   [path repo-url]
-  (when-not (fs/exists? path)
-    (fs/create-dirs (str (fs/parent (fs/path path))))
-    (p/shell {:inherit true} "git" "clone" "--depth" "1" repo-url path)))
+  (if (fs/exists? path)
+    (p/shell {:inherit true} "git" "-C" path "pull" "--ff-only")
+    (do
+      (fs/create-dirs (str (fs/parent (fs/path path))))
+      (p/shell {:inherit true} "git" "clone" "--depth" "1" repo-url path))))
 
 (defn speech-to-text-path
   []
   (let [dir (str (fs/path (absolute-path "tools") "tool-speech-to-text"))
         script (str (fs/path dir "transcribe.bb"))]
-    (clone-if-missing! dir speech-to-text-repo)
+    (sync-repo! dir speech-to-text-repo)
     (when-not (fs/exists? script)
       (die! (str "Missing transcribe script: " script)))
     script))
@@ -86,7 +88,7 @@
   []
   (let [dir (str (fs/path (absolute-path "tools") "tool-shortform-subtitles"))
         script (str (fs/path dir "render"))]
-    (clone-if-missing! dir shortform-subtitles-repo)
+    (sync-repo! dir shortform-subtitles-repo)
     (when-not (fs/exists? script)
       (die! (str "Missing render script: " script)))
     script))
