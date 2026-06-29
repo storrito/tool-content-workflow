@@ -14,6 +14,8 @@
   (p/shell {:inherit true} "./tiktok-caption.bb")
   (println "Running youtube-shorts-caption.bb")
   (p/shell {:inherit true} "./youtube-shorts-caption.bb")
+  (println "Running pinterest-caption.bb")
+  (p/shell {:inherit true} "./pinterest-caption.bb")
   (println "Running render-subtitles.bb")
   (p/shell {:inherit true} "./render-subtitles.bb")
   (println "Running overlay-video.bb")

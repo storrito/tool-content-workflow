@@ -40,7 +40,13 @@
                                             :filename "youtube-shorts-caption.txt"}
    "/download/youtube-shorts-title.txt" {:path "work/youtube-shorts-title.txt"
                                           :content-type "text/plain; charset=utf-8"
-                                          :filename "youtube-shorts-title.txt"}})
+                                          :filename "youtube-shorts-title.txt"}
+   "/download/pinterest-description.txt" {:path "work/pinterest-description.txt"
+                                           :content-type "text/plain; charset=utf-8"
+                                           :filename "pinterest-description.txt"}
+   "/download/pinterest-title.txt" {:path "work/pinterest-title.txt"
+                                     :content-type "text/plain; charset=utf-8"
+                                     :filename "pinterest-title.txt"}})
 
 (defn now []
   (str (java.time.Instant/now)))
@@ -310,7 +316,9 @@ form.addEventListener('submit', async (event) => {
          (download-link "/download/output.mp4" "output.mp4")
          (download-link "/download/tiktok-caption.txt" "tiktok-caption.txt")
          (download-link "/download/youtube-shorts-caption.txt" "youtube-shorts-caption.txt")
-         (download-link "/download/youtube-shorts-title.txt" "youtube-shorts-title.txt")])
+         (download-link "/download/youtube-shorts-title.txt" "youtube-shorts-title.txt")
+         (download-link "/download/pinterest-description.txt" "pinterest-description.txt")
+         (download-link "/download/pinterest-title.txt" "pinterest-title.txt")])
       [:h2 "Log"]
       [:pre (tail-log)]])))
 
