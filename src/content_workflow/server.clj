@@ -146,6 +146,8 @@ input, select, textarea, button { box-sizing: border-box; font: inherit; max-wid
 input[type=file], input[type=text], input[type=number], select, textarea { width: 100%; }
 textarea { min-height: 8rem; }
 button { margin-top: 1rem; padding: 0.6rem 1rem; }
+button.primary-button { background: #0b5fff; border: 0; border-radius: 0.6rem; color: white; cursor: pointer; display: block; font-weight: 800; font-size: 1.1rem; padding: 1rem 1.25rem; width: 100%; }
+button.primary-button:hover { background: #004bd1; }
 video { background: #000; border-radius: 0.5rem; max-height: 70vh; max-width: 100%; }
 pre { background: #111; border-radius: 0.5rem; color: #eee; overflow: auto; padding: 1rem; white-space: pre-wrap; }
 table { border-collapse: collapse; width: 100%; }
@@ -516,15 +518,22 @@ form.addEventListener('submit', async (event) => {
         youtube-title (copy-value copy :youtube-title (publish/default-title copy))
         youtube-description (copy-value copy :youtube-description caption)
         fields (case platform
-                 "TIKTOK" [(textarea-input "tiktok-caption" "TikTok caption" (copy-value copy :tiktok-caption caption))]
+                 "TIKTOK" [(textarea-input "tiktok-caption" "TikTok caption" (copy-value copy :tiktok-caption caption))
+                           [:div
+                            [:label {:for "tiktok-privacy"} "TikTok privacy"]
+                            [:select {:id "tiktok-privacy" :name "tiktok-privacy"}
+                             [:option {:value "PUBLIC_TO_EVERYONE" :selected true} "PUBLIC_TO_EVERYONE"]
+                             [:option {:value "MUTUAL_FOLLOW_FRIENDS"} "MUTUAL_FOLLOW_FRIENDS"]
+                             [:option {:value "FOLLOWER_OF_CREATOR"} "FOLLOWER_OF_CREATOR"]
+                             [:option {:value "SELF_ONLY"} "SELF_ONLY"]]]]
                  "YOUTUBE" [(text-input "youtube-title" "YouTube title" youtube-title)
                             (textarea-input "youtube-description" "YouTube description" youtube-description)
                             [:div
                              [:label {:for "youtube-privacy"} "YouTube privacy"]
                              [:select {:id "youtube-privacy" :name "youtube-privacy"}
-                              [:option {:value "PRIVATE" :selected true} "PRIVATE"]
+                              [:option {:value "PUBLIC" :selected true} "PUBLIC"]
                               [:option {:value "UNLISTED"} "UNLISTED"]
-                              [:option {:value "PUBLIC"} "PUBLIC"]]]]
+                              [:option {:value "PRIVATE"} "PRIVATE"]]]]
                  "PINTEREST" [(text-input "pinterest-title" "Pinterest title" (copy-value copy :pinterest-title youtube-title))
                               (textarea-input "pinterest-description" "Pinterest description" (copy-value copy :pinterest-description youtube-description))
                               [:div
@@ -537,11 +546,33 @@ form.addEventListener('submit', async (event) => {
                  "INSTAGRAM" [(textarea-input "instagram-caption" "Instagram Reel caption" (copy-value copy :instagram-caption caption))]
                  "FACEBOOK" [(textarea-input "facebook-caption" "Facebook Reel caption" (copy-value copy :facebook-caption caption))]
                  "LINKEDIN" [(text-input "linkedin-title" "LinkedIn media title" (copy-value copy :linkedin-title youtube-title))
-                             (textarea-input "linkedin-text" "LinkedIn text" (copy-value copy :linkedin-text caption))]
-                 "TWITTER" [(textarea-input "twitter-text" "X / Twitter text" (copy-value copy :twitter-text caption))]
+                             (textarea-input "linkedin-text" "LinkedIn text" (copy-value copy :linkedin-text caption))
+                             [:div
+                              [:label {:for "linkedin-privacy"} "LinkedIn visibility"]
+                              [:select {:id "linkedin-privacy" :name "linkedin-privacy"}
+                               [:option {:value "PUBLIC" :selected true} "PUBLIC"]
+                               [:option {:value "CONNECTIONS"} "CONNECTIONS"]
+                               [:option {:value "LOGGED_IN"} "LOGGED_IN"]
+                               [:option {:value "CONTAINER"} "CONTAINER"]]]]
+                 "TWITTER" [(textarea-input "twitter-text" "X / Twitter text" (copy-value copy :twitter-text caption))
+                            [:div
+                             [:label {:for "twitter-reply-settings"} "X / Twitter reply settings"]
+                             [:select {:id "twitter-reply-settings" :name "twitter-reply-settings"}
+                              [:option {:value "EVERYONE" :selected true} "EVERYONE"]
+                              [:option {:value "FOLLOWING"} "FOLLOWING"]
+                              [:option {:value "MENTIONED_USERS"} "MENTIONED_USERS"]
+                              [:option {:value "SUBSCRIBERS"} "SUBSCRIBERS"]
+                              [:option {:value "VERIFIED"} "VERIFIED"]]]]
                  "THREADS" [(textarea-input "threads-text" "Threads text" (copy-value copy :threads-text caption))]
                  "BLUESKY" [(textarea-input "bluesky-text" "Bluesky text" (copy-value copy :bluesky-text caption))]
-                 "MASTODON" [(textarea-input "mastodon-text" "Mastodon text" (copy-value copy :mastodon-text caption))]
+                 "MASTODON" [(textarea-input "mastodon-text" "Mastodon text" (copy-value copy :mastodon-text caption))
+                             [:div
+                              [:label {:for "mastodon-privacy"} "Mastodon visibility"]
+                              [:select {:id "mastodon-privacy" :name "mastodon-privacy"}
+                               [:option {:value "PUBLIC" :selected true} "PUBLIC"]
+                               [:option {:value "UNLISTED"} "UNLISTED"]
+                               [:option {:value "PRIVATE"} "PRIVATE"]
+                               [:option {:value "DIRECT"} "DIRECT"]]]]
                  [])]
     (into [:section.platform-section
            [:h3 (platform-heading platform targets)]
@@ -567,23 +598,13 @@ form.addEventListener('submit', async (event) => {
      (try
        (let [team (bundle/get-team!)
              targets (publish-targets-from-team team)
-             platforms (map :platform targets)
              copy (publish/generated-copy)]
          (if (seq targets)
            [:form {:method "post" :action "/publish"}
             [:p "Review/edit platform-specific titles, captions, and descriptions. This will publish to all connected platforms below."]
             (for [{:keys [platform accounts]} targets]
               (platform-editor platform copy accounts))
-            (when (some #{"TIKTOK"} platforms)
-              [:div.platform-section
-               [:label {:for "tiktok-privacy"} "TikTok privacy (optional)"]
-               [:select {:id "tiktok-privacy" :name "tiktok-privacy"}
-                [:option {:value ""} "Bundle/TikTok default"]
-                [:option {:value "SELF_ONLY"} "SELF_ONLY"]
-                [:option {:value "PUBLIC_TO_EVERYONE"} "PUBLIC_TO_EVERYONE"]
-                [:option {:value "MUTUAL_FOLLOW_FRIENDS"} "MUTUAL_FOLLOW_FRIENDS"]
-                [:option {:value "FOLLOWER_OF_CREATOR"} "FOLLOWER_OF_CREATOR"]]])
-            [:button {:type "submit"} "Publish to all connected platforms"]]
+            [:button {:type "submit" :class "primary-button"} "Publish to all connected platforms"]]
            [:div
             [:p.muted "No connected social accounts supported by this publishing form yet."]
             [:p [:a {:href "/social-accounts"} "Connect social accounts"]]]))
@@ -712,6 +733,9 @@ form.addEventListener('submit', async (event) => {
                                      :copy (copy-overrides-from-params params)
                                      :youtube-privacy (get params "youtube-privacy")
                                      :tiktok-privacy (get params "tiktok-privacy")
+                                     :linkedin-privacy (get params "linkedin-privacy")
+                                     :mastodon-privacy (get params "mastodon-privacy")
+                                     :twitter-reply-settings (get params "twitter-reply-settings")
                                      :pinterest-board (get params "pinterest-board")})
         (redirect "/posted-videos"))
       (catch Exception e

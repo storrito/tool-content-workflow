@@ -93,12 +93,12 @@
       "TIKTOK" {:type "VIDEO"
                 :text tiktok-caption
                 :uploadIds upload-ids
-                :privacy (non-blank (:tiktok-privacy opts))}
+                :privacy (or (non-blank (:tiktok-privacy opts)) "PUBLIC_TO_EVERYONE")}
       "YOUTUBE" {:type "SHORT"
                  :text youtube-title
                  :description youtube-description
                  :uploadIds upload-ids
-                 :privacy (or (non-blank (:youtube-privacy opts)) "PRIVATE")
+                 :privacy (or (non-blank (:youtube-privacy opts)) "PUBLIC")
                  :madeForKids false}
       "PINTEREST" (let [board-name (or (non-blank (:pinterest-board opts))
                                        (non-blank (bundle/env "BUNDLE_SOCIAL_PINTEREST_BOARD")))]
@@ -118,15 +118,18 @@
                   :uploadIds upload-ids}
       "LINKEDIN" {:text linkedin-text
                   :uploadIds upload-ids
-                  :mediaTitle linkedin-title}
+                  :mediaTitle linkedin-title
+                  :privacy (or (non-blank (:linkedin-privacy opts)) "PUBLIC")}
       "TWITTER" {:text twitter-text
-                 :uploadIds upload-ids}
+                 :uploadIds upload-ids
+                 :replySettings (or (non-blank (:twitter-reply-settings opts)) "EVERYONE")}
       "THREADS" {:text threads-text
                  :uploadIds upload-ids}
       "BLUESKY" {:text bluesky-text
                  :uploadIds upload-ids}
       "MASTODON" {:text mastodon-text
-                  :uploadIds upload-ids}
+                  :uploadIds upload-ids
+                  :privacy (or (non-blank (:mastodon-privacy opts)) "PUBLIC")}
       (throw (ex-info (str "Unsupported platform for generated video publishing: " platform)
                       {:platform platform})))))
 
@@ -191,8 +194,11 @@
        "  --title TEXT             Bundle post title override\n"
        "  --post-date ISO          ISO timestamp, default now\n"
        "  --reference-key TEXT     Bundle referenceKey override\n"
-       "  --youtube-privacy VALUE  PRIVATE, UNLISTED, PUBLIC. Default PRIVATE\n"
-       "  --tiktok-privacy VALUE   Optional TikTok privacy value\n"
+       "  --youtube-privacy VALUE  PUBLIC, UNLISTED, PRIVATE. Default PUBLIC\n"
+       "  --tiktok-privacy VALUE   PUBLIC_TO_EVERYONE, MUTUAL_FOLLOW_FRIENDS, FOLLOWER_OF_CREATOR, SELF_ONLY. Default PUBLIC_TO_EVERYONE\n"
+       "  --linkedin-privacy VALUE PUBLIC, CONNECTIONS, LOGGED_IN, CONTAINER. Default PUBLIC\n"
+       "  --mastodon-privacy VALUE PUBLIC, UNLISTED, PRIVATE, DIRECT. Default PUBLIC\n"
+       "  --twitter-reply-settings VALUE EVERYONE, FOLLOWING, MENTIONED_USERS, SUBSCRIBERS, VERIFIED. Default EVERYONE\n"
        "  --pinterest-board NAME   Required when publishing to Pinterest unless env is set\n"
        "  --help                   Show this help\n"))
 
@@ -210,6 +216,9 @@
         "--reference-key" (recur (nnext args) (assoc opts :reference-key (second args)))
         "--youtube-privacy" (recur (nnext args) (assoc opts :youtube-privacy (second args)))
         "--tiktok-privacy" (recur (nnext args) (assoc opts :tiktok-privacy (second args)))
+        "--linkedin-privacy" (recur (nnext args) (assoc opts :linkedin-privacy (second args)))
+        "--mastodon-privacy" (recur (nnext args) (assoc opts :mastodon-privacy (second args)))
+        "--twitter-reply-settings" (recur (nnext args) (assoc opts :twitter-reply-settings (second args)))
         "--pinterest-board" (recur (nnext args) (assoc opts :pinterest-board (second args)))
         (throw (ex-info (str "Unknown option: " arg) {:arg arg})))
       opts)))
