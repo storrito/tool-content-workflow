@@ -389,7 +389,26 @@ form.addEventListener('submit', async (event) => {
       (:id account)
       "connected"))
 
-(defn publish-platform-options-from-team
+(defn channel-display-name
+  [channel]
+  (or (:name channel)
+      (:username channel)
+      (:address channel)
+      (:id channel)
+      "selected channel"))
+
+(defn selected-channel
+  [account]
+  (let [external-id (:externalId account)
+        channels (:channels account)]
+    (or (when (seq channels)
+          (some #(when (or (= (:id %) external-id)
+                           (= (:externalId %) external-id))
+                   %)
+                channels))
+        (first channels))))
+
+(defn publish-targets-from-team
   [team]
   (let [accounts-by-type (->> (:socialAccounts team)
                               (map social-account)
@@ -399,13 +418,23 @@ form.addEventListener('submit', async (event) => {
      (for [[value label] social-platform-options
            :let [accounts (seq (get accounts-by-type value))]
            :when accounts]
-       [value (str label " — " (str/join ", " (map account-display-name accounts)))]))))
+       {:platform value
+        :label label
+        :accounts (for [account accounts]
+                    {:account account
+                     :channel (selected-channel account)})}))))
+
+(defn publish-platform-options-from-team
+  [team]
+  (vec
+   (for [{:keys [platform label accounts]} (publish-targets-from-team team)]
+     [platform (str label " — " (str/join ", " (map (comp account-display-name :account) accounts)))])))
 
 (defn connected-publish-platforms!
   []
   (->> (bundle/get-team!)
-       publish-platform-options-from-team
-       (map first)
+       publish-targets-from-team
+       (map :platform)
        set))
 
 (def publish-copy-fields
@@ -457,8 +486,21 @@ form.addEventListener('submit', async (event) => {
   (or (some (fn [[value label]] (when (= value platform) label)) social-platform-options)
       platform))
 
+(defn publish-target-summary
+  [targets]
+  [:div.muted
+   [:strong "Will post to:"]
+   [:ul
+    (for [{:keys [account channel]} targets]
+      [:li
+       [:span "Account: " (account-display-name account)]
+       [:br]
+       [:span "Channel: " (if channel
+                             (channel-display-name channel)
+                             "account itself / no selected channel")]])]])
+
 (defn platform-editor
-  [platform copy]
+  [platform copy targets]
   (let [caption (default-caption copy)
         youtube-title (copy-value copy :youtube-title (publish/default-title copy))
         youtube-description (copy-value copy :youtube-description caption)
@@ -492,6 +534,7 @@ form.addEventListener('submit', async (event) => {
                  [])]
     (into [:section.platform-section
            [:h3 (platform-label platform)]
+           (publish-target-summary targets)
            [:input {:type "hidden" :name "platform" :value platform}]]
           fields)))
 
@@ -512,15 +555,14 @@ form.addEventListener('submit', async (event) => {
      warning
      (try
        (let [team (bundle/get-team!)
-             options (publish-platform-options-from-team team)
-             platforms (map first options)
+             targets (publish-targets-from-team team)
+             platforms (map :platform targets)
              copy (publish/generated-copy)]
-         (if (seq options)
+         (if (seq targets)
            [:form {:method "post" :action "/publish"}
             [:p "Review/edit platform-specific titles, captions, and descriptions. This will publish to all connected platforms below."]
-            [:p [:strong "Connected platforms: "] (str/join ", " (map second options))]
-            (for [platform platforms]
-              (platform-editor platform copy))
+            (for [{:keys [platform accounts]} targets]
+              (platform-editor platform copy accounts))
             (when (some #{"TIKTOK"} platforms)
               [:div.platform-section
                [:label {:for "tiktok-privacy"} "TikTok privacy (optional)"]
@@ -580,12 +622,14 @@ form.addEventListener('submit', async (event) => {
 (defn social-account-row
   [row]
   (let [account (or (:socialAccount row) row)
-        channel (first (:channels account))]
+        channel (selected-channel account)]
     [:tr
      [:td (or (:type account) "")]
      [:td (or (:displayName account) (:username account) (:userDisplayName account) "")]
      [:td (or (:username account) (:userUsername account) "")]
-     [:td (or (:name channel) (:username channel) (:address channel) "")]]))
+     [:td (if channel
+            (channel-display-name channel)
+            "Account itself / no channel selected")]]))
 
 (defn social-accounts-page
   []
