@@ -66,9 +66,6 @@
 (def default-connect-platforms
   ["TIKTOK" "YOUTUBE" "INSTAGRAM" "FACEBOOK" "PINTEREST" "LINKEDIN"])
 
-(def default-publish-platforms
-  #{"TIKTOK" "YOUTUBE"})
-
 (defn now []
   (str (java.time.Instant/now)))
 
@@ -147,13 +144,16 @@ nav a { margin-right: 1rem; }
 label { display: block; font-weight: 700; margin-top: 1rem; }
 input, select, textarea, button { box-sizing: border-box; font: inherit; max-width: 100%; }
 input[type=file], input[type=text], input[type=number], select, textarea { width: 100%; }
-textarea { min-height: 12rem; }
+textarea { min-height: 8rem; }
 button { margin-top: 1rem; padding: 0.6rem 1rem; }
+video { background: #000; border-radius: 0.5rem; max-height: 70vh; max-width: 100%; }
 pre { background: #111; border-radius: 0.5rem; color: #eee; overflow: auto; padding: 1rem; white-space: pre-wrap; }
 table { border-collapse: collapse; width: 100%; }
 th, td { border-bottom: 1px solid #ddd; padding: 0.5rem; text-align: left; vertical-align: top; }
 .inline-options label { display: inline-block; font-weight: 400; margin: 0.4rem 1rem 0 0; }
 .status, .panel { border: 1px solid #ddd; border-radius: 0.5rem; padding: 1rem; }
+.panel { margin-top: 1rem; }
+.platform-section { border-top: 1px solid #ddd; margin-top: 1rem; padding-top: 1rem; }
 .downloads a { display: block; margin: 0.4rem 0; }
 .error { color: #b00020; font-weight: 700; }
 .muted { color: #666; }
@@ -408,6 +408,102 @@ form.addEventListener('submit', async (event) => {
        (map first)
        set))
 
+(def publish-copy-fields
+  {"tiktok-caption" :tiktok-caption
+   "youtube-title" :youtube-title
+   "youtube-description" :youtube-description
+   "pinterest-title" :pinterest-title
+   "pinterest-description" :pinterest-description
+   "instagram-caption" :instagram-caption
+   "facebook-caption" :facebook-caption
+   "linkedin-title" :linkedin-title
+   "linkedin-text" :linkedin-text
+   "twitter-text" :twitter-text
+   "threads-text" :threads-text
+   "bluesky-text" :bluesky-text
+   "mastodon-text" :mastodon-text})
+
+(defn copy-overrides-from-params
+  [params]
+  (into {}
+        (for [[form-key copy-key] publish-copy-fields]
+          [copy-key (get params form-key)])))
+
+(defn copy-value
+  [copy key fallback]
+  (or (publish/copy-text copy key) fallback ""))
+
+(defn default-caption
+  [copy]
+  (or (publish/copy-text copy :tiktok-caption)
+      (publish/copy-text copy :youtube-description)
+      (publish/copy-text copy :pinterest-description)
+      ""))
+
+(defn text-input
+  [id label value]
+  [:div
+   [:label {:for id} label]
+   [:input {:id id :name id :type "text" :value (or value "")}]])
+
+(defn textarea-input
+  [id label value]
+  [:div
+   [:label {:for id} label]
+   [:textarea {:id id :name id} (or value "")]])
+
+(defn platform-label
+  [platform]
+  (or (some (fn [[value label]] (when (= value platform) label)) social-platform-options)
+      platform))
+
+(defn platform-editor
+  [platform copy]
+  (let [caption (default-caption copy)
+        youtube-title (copy-value copy :youtube-title (publish/default-title copy))
+        youtube-description (copy-value copy :youtube-description caption)
+        fields (case platform
+                 "TIKTOK" [(textarea-input "tiktok-caption" "TikTok caption" (copy-value copy :tiktok-caption caption))]
+                 "YOUTUBE" [(text-input "youtube-title" "YouTube title" youtube-title)
+                            (textarea-input "youtube-description" "YouTube description" youtube-description)
+                            [:div
+                             [:label {:for "youtube-privacy"} "YouTube privacy"]
+                             [:select {:id "youtube-privacy" :name "youtube-privacy"}
+                              [:option {:value "PRIVATE" :selected true} "PRIVATE"]
+                              [:option {:value "UNLISTED"} "UNLISTED"]
+                              [:option {:value "PUBLIC"} "PUBLIC"]]]]
+                 "PINTEREST" [(text-input "pinterest-title" "Pinterest title" (copy-value copy :pinterest-title youtube-title))
+                              (textarea-input "pinterest-description" "Pinterest description" (copy-value copy :pinterest-description youtube-description))
+                              [:div
+                               [:label {:for "pinterest-board"} "Pinterest board name"]
+                               [:input {:id "pinterest-board"
+                                        :name "pinterest-board"
+                                        :type "text"
+                                        :placeholder "Required for Pinterest"
+                                        :value (or (env "BUNDLE_SOCIAL_PINTEREST_BOARD") "")}]]]
+                 "INSTAGRAM" [(textarea-input "instagram-caption" "Instagram Reel caption" (copy-value copy :instagram-caption caption))]
+                 "FACEBOOK" [(textarea-input "facebook-caption" "Facebook Reel caption" (copy-value copy :facebook-caption caption))]
+                 "LINKEDIN" [(text-input "linkedin-title" "LinkedIn media title" (copy-value copy :linkedin-title youtube-title))
+                             (textarea-input "linkedin-text" "LinkedIn text" (copy-value copy :linkedin-text caption))]
+                 "TWITTER" [(textarea-input "twitter-text" "X / Twitter text" (copy-value copy :twitter-text caption))]
+                 "THREADS" [(textarea-input "threads-text" "Threads text" (copy-value copy :threads-text caption))]
+                 "BLUESKY" [(textarea-input "bluesky-text" "Bluesky text" (copy-value copy :bluesky-text caption))]
+                 "MASTODON" [(textarea-input "mastodon-text" "Mastodon text" (copy-value copy :mastodon-text caption))]
+                 [])]
+    (into [:section.platform-section
+           [:h3 (platform-label platform)]
+           [:input {:type "hidden" :name "platform" :value platform}]]
+          fields)))
+
+(defn video-preview
+  []
+  (when (.exists (io/file output-path))
+    [:div.panel
+     [:h2 "Rendered video"]
+     [:video {:controls true
+              :preload "metadata"
+              :src "/media/output.mp4"}]]))
+
 (defn publish-form
   []
   [:div.panel
@@ -416,30 +512,25 @@ form.addEventListener('submit', async (event) => {
      warning
      (try
        (let [team (bundle/get-team!)
-             options (publish-platform-options-from-team team)]
+             options (publish-platform-options-from-team team)
+             platforms (map first options)
+             copy (publish/generated-copy)]
          (if (seq options)
            [:form {:method "post" :action "/publish"}
-            [:p "Upload " [:code "output.mp4"] " to bundle.social and create one post for the selected connected social accounts."]
-            (platform-checkboxes options default-publish-platforms)
-            [:label {:for "youtube-privacy"} "YouTube privacy"]
-            [:select {:id "youtube-privacy" :name "youtube-privacy"}
-             [:option {:value "PRIVATE" :selected true} "PRIVATE"]
-             [:option {:value "UNLISTED"} "UNLISTED"]
-             [:option {:value "PUBLIC"} "PUBLIC"]]
-            [:label {:for "tiktok-privacy"} "TikTok privacy (optional)"]
-            [:select {:id "tiktok-privacy" :name "tiktok-privacy"}
-             [:option {:value ""} "Bundle/TikTok default"]
-             [:option {:value "SELF_ONLY"} "SELF_ONLY"]
-             [:option {:value "PUBLIC_TO_EVERYONE"} "PUBLIC_TO_EVERYONE"]
-             [:option {:value "MUTUAL_FOLLOW_FRIENDS"} "MUTUAL_FOLLOW_FRIENDS"]
-             [:option {:value "FOLLOWER_OF_CREATOR"} "FOLLOWER_OF_CREATOR"]]
-            [:label {:for "pinterest-board"} "Pinterest board name"]
-            [:input {:id "pinterest-board"
-                     :name "pinterest-board"
-                     :type "text"
-                     :placeholder "Required when Pinterest is selected"
-                     :value (or (env "BUNDLE_SOCIAL_PINTEREST_BOARD") "")}]
-            [:button {:type "submit"} "Publish selected platforms"]]
+            [:p "Review/edit platform-specific titles, captions, and descriptions. This will publish to all connected platforms below."]
+            [:p [:strong "Connected platforms: "] (str/join ", " (map second options))]
+            (for [platform platforms]
+              (platform-editor platform copy))
+            (when (some #{"TIKTOK"} platforms)
+              [:div.platform-section
+               [:label {:for "tiktok-privacy"} "TikTok privacy (optional)"]
+               [:select {:id "tiktok-privacy" :name "tiktok-privacy"}
+                [:option {:value ""} "Bundle/TikTok default"]
+                [:option {:value "SELF_ONLY"} "SELF_ONLY"]
+                [:option {:value "PUBLIC_TO_EVERYONE"} "PUBLIC_TO_EVERYONE"]
+                [:option {:value "MUTUAL_FOLLOW_FRIENDS"} "MUTUAL_FOLLOW_FRIENDS"]
+                [:option {:value "FOLLOWER_OF_CREATOR"} "FOLLOWER_OF_CREATOR"]]])
+            [:button {:type "submit"} "Publish to all connected platforms"]]
            [:div
             [:p.muted "No connected social accounts supported by this publishing form yet."]
             [:p [:a {:href "/social-accounts"} "Connect social accounts"]]]))
@@ -472,6 +563,7 @@ form.addEventListener('submit', async (event) => {
           (download-link "/download/youtube-shorts-title.txt" "youtube-shorts-title.txt")
           (download-link "/download/pinterest-description.txt" "pinterest-description.txt")
           (download-link "/download/pinterest-title.txt" "pinterest-title.txt")]
+         (video-preview)
          (publish-form)])
       [:h2 "Log"]
       [:pre (tail-log)]])))
@@ -562,6 +654,7 @@ form.addEventListener('submit', async (event) => {
           (throw (ex-info (str "Selected platform is not connected: " (str/join ", " unsupported))
                           {:platforms unsupported})))
         (publish/publish-generated! {:platforms platforms
+                                     :copy (copy-overrides-from-params params)
                                      :youtube-privacy (get params "youtube-privacy")
                                      :tiktok-privacy (get params "tiktok-privacy")
                                      :pinterest-board (get params "pinterest-board")})
@@ -660,6 +753,17 @@ form.addEventListener('submit', async (event) => {
                 [:p.error (.getMessage e)]
                 [:p "Check your Bundle configuration or try again later."]])))]))
 
+(defn media-output-response
+  []
+  (let [file (io/file output-path)]
+    (if (and (.exists file) (.isFile file))
+      {:status 200
+       :headers {"content-type" "video/mp4"
+                 "content-length" (str (.length file))
+                 "cache-control" "no-store"}
+       :body file}
+      (response 404 "Not found"))))
+
 (defn download-response
   [uri]
   (let [{:keys [path content-type filename]} (downloads uri)
@@ -708,6 +812,7 @@ form.addEventListener('submit', async (event) => {
     [:post "/jobs"] (submit-job request)
     [:get "/jobs/current"] (response 200 (status-page))
     [:get "/jobs/current/progress"] (response 200 (progress-fragment))
+    [:get "/media/output.mp4"] (media-output-response)
     [:get "/social-accounts"] (response 200 (social-accounts-page))
     [:post "/social-accounts/connect"] (connect-social-accounts request)
     [:post "/publish"] (submit-publish request)

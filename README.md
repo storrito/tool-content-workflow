@@ -83,7 +83,7 @@ BUNDLE_SOCIAL_TEAM_ID=team_...
 
 Open `/social-accounts` to add/manage social accounts through Bundle's hosted portal. Localhost is fine for this redirect flow; no public URL is required.
 
-After a workflow succeeds, use the "Publish generated video" form on the progress page. It only shows connected social accounts, uploads `output.mp4` to Bundle, and creates one post for the selected platforms. `/posted-videos` lists the latest Bundle posts for the configured team, including status, accounts, captions/descriptions, errors, and public links when available.
+After a workflow succeeds, the progress page shows the rendered video and a "Publish generated video" form. It only shows connected social accounts, lets you edit platform-specific titles/captions/descriptions, uploads `output.mp4` to Bundle, and publishes to all connected platforms shown in the form. `/posted-videos` lists the latest Bundle posts for the configured team, including status, accounts, captions/descriptions, errors, and public links when available.
 
 You can also publish from the terminal. The CLI reads the same `.env` file, so this is enough after configuring `.env`:
 

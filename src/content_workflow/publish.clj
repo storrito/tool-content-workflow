@@ -56,20 +56,42 @@
       (non-blank (:pinterest-title copy))
       "Generated short video"))
 
+(defn copy-text
+  [copy key]
+  (non-blank (get copy key)))
+
+(defn merge-copy-overrides
+  [base overrides]
+  (merge base
+         (into {}
+               (for [[key value] overrides
+                     :let [value (non-blank value)]
+                     :when value]
+                 [key value]))))
+
 (defn platform-data
   [platform upload-id copy opts]
-  (let [caption (or (:tiktok-caption copy)
-                    (:youtube-description copy)
-                    (:pinterest-description copy)
-                    "")
-        youtube-title (or (:youtube-title copy) (default-title copy))
-        youtube-description (or (:youtube-description copy) caption)
-        pinterest-title (or (:pinterest-title copy) (default-title copy))
-        pinterest-description (or (:pinterest-description copy) caption)
+  (let [base-caption (or (copy-text copy :tiktok-caption)
+                         (copy-text copy :youtube-description)
+                         (copy-text copy :pinterest-description)
+                         "")
+        tiktok-caption (or (copy-text copy :tiktok-caption) base-caption)
+        youtube-title (or (copy-text copy :youtube-title) (default-title copy))
+        youtube-description (or (copy-text copy :youtube-description) base-caption)
+        pinterest-title (or (copy-text copy :pinterest-title) (default-title copy))
+        pinterest-description (or (copy-text copy :pinterest-description) base-caption)
+        instagram-caption (or (copy-text copy :instagram-caption) base-caption)
+        facebook-caption (or (copy-text copy :facebook-caption) base-caption)
+        linkedin-title (or (copy-text copy :linkedin-title) youtube-title)
+        linkedin-text (or (copy-text copy :linkedin-text) base-caption)
+        twitter-text (or (copy-text copy :twitter-text) base-caption)
+        threads-text (or (copy-text copy :threads-text) base-caption)
+        bluesky-text (or (copy-text copy :bluesky-text) base-caption)
+        mastodon-text (or (copy-text copy :mastodon-text) base-caption)
         upload-ids [upload-id]]
     (case platform
       "TIKTOK" {:type "VIDEO"
-                :text caption
+                :text tiktok-caption
                 :uploadIds upload-ids
                 :privacy (non-blank (:tiktok-privacy opts))}
       "YOUTUBE" {:type "SHORT"
@@ -88,22 +110,22 @@
                      :boardName board-name
                      :uploadIds upload-ids})
       "INSTAGRAM" {:type "REEL"
-                   :text caption
+                   :text instagram-caption
                    :uploadIds upload-ids
                    :shareToFeed true}
       "FACEBOOK" {:type "REEL"
-                  :text caption
+                  :text facebook-caption
                   :uploadIds upload-ids}
-      "LINKEDIN" {:text caption
+      "LINKEDIN" {:text linkedin-text
                   :uploadIds upload-ids
-                  :mediaTitle youtube-title}
-      "TWITTER" {:text caption
+                  :mediaTitle linkedin-title}
+      "TWITTER" {:text twitter-text
                  :uploadIds upload-ids}
-      "THREADS" {:text caption
+      "THREADS" {:text threads-text
                  :uploadIds upload-ids}
-      "BLUESKY" {:text caption
+      "BLUESKY" {:text bluesky-text
                  :uploadIds upload-ids}
-      "MASTODON" {:text caption
+      "MASTODON" {:text mastodon-text
                   :uploadIds upload-ids}
       (throw (ex-info (str "Unsupported platform for generated video publishing: " platform)
                       {:platform platform})))))
@@ -140,7 +162,7 @@
     :as opts}]
   (bundle/require-config!)
   (require-file! video-path)
-  (let [copy (generated-copy)
+  (let [copy (merge-copy-overrides (generated-copy) (:copy opts))
         upload (bundle/upload-video! {:teamId (or team-id (bundle/team-id))
                                       :file-path video-path
                                       :file-name file-name
