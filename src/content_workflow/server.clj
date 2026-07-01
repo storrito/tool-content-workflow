@@ -486,18 +486,29 @@ form.addEventListener('submit', async (event) => {
   (or (some (fn [[value label]] (when (= value platform) label)) social-platform-options)
       platform))
 
-(defn publish-target-summary
+(defn publish-target-title
+  [{:keys [account channel]}]
+  (if channel
+    (channel-display-name channel)
+    (account-display-name account)))
+
+(defn platform-heading
+  [platform targets]
+  (str (platform-label platform)
+       " - "
+       (str/join ", " (map publish-target-title targets))))
+
+(defn publish-target-details
   [targets]
-  [:div.muted
-   [:strong "Will post to:"]
-   [:ul
-    (for [{:keys [account channel]} targets]
-      [:li
-       [:span "Account: " (account-display-name account)]
-       [:br]
-       [:span "Channel: " (if channel
-                             (channel-display-name channel)
-                             "account itself / no selected channel")]])]])
+  (when (some :channel targets)
+    [:p.muted
+     (str/join
+      " · "
+      (for [{:keys [account channel]} targets]
+        (if channel
+          (str "Account: " (account-display-name account)
+               " / Channel: " (channel-display-name channel))
+          (str "Account: " (account-display-name account)))))]))
 
 (defn platform-editor
   [platform copy targets]
@@ -533,8 +544,8 @@ form.addEventListener('submit', async (event) => {
                  "MASTODON" [(textarea-input "mastodon-text" "Mastodon text" (copy-value copy :mastodon-text caption))]
                  [])]
     (into [:section.platform-section
-           [:h3 (platform-label platform)]
-           (publish-target-summary targets)
+           [:h3 (platform-heading platform targets)]
+           (publish-target-details targets)
            [:input {:type "hidden" :name "platform" :value platform}]]
           fields)))
 
