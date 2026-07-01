@@ -66,9 +66,40 @@ CONTENT_WORKFLOW_PASSWORD='change-me' \
 ./server.bb
 ```
 
+Alternatively, copy `.env.example` to `.env`, edit the values, and run `./server.bb`. `.env` and `.env.local` are git-ignored; real environment variables override values from those files.
+
 Then open `http://localhost:8080`, upload `input.mp4`, fill in the form, and wait for the progress page to show the download links.
 
 The web UI runs one job at a time and uses the same root-level workflow conventions as the scripts. Starting a new job replaces the previous generated input/output files.
+
+## bundle.social publishing
+
+The web UI can also connect social accounts and publish the generated `output.mp4` via [bundle.social](https://bundle.social/). Configure Bundle credentials either as environment variables or in `.env` before starting `server.bb`:
+
+```bash
+BUNDLE_SOCIAL_API_KEY=pk_live_...
+BUNDLE_SOCIAL_TEAM_ID=team_...
+```
+
+Open `/social-accounts` to add/manage social accounts through Bundle's hosted portal. Localhost is fine for this redirect flow; no public URL is required.
+
+After a workflow succeeds, the progress page shows the rendered video and a "Publish generated video" form. It only shows connected social accounts, lets you edit platform-specific titles/captions/descriptions, uploads `output.mp4` to Bundle, and publishes to all connected platforms shown in the form. `/posted-videos` lists the latest Bundle posts for the configured team, including status, accounts, captions/descriptions, errors, and public links when available.
+
+You can also publish from the terminal. The CLI reads the same `.env` file, so this is enough after configuring `.env`:
+
+```bash
+./publish-to-bundle.bb --platforms TIKTOK,YOUTUBE
+```
+
+Or pass credentials through the environment:
+
+```bash
+BUNDLE_SOCIAL_API_KEY=pk_live_... \
+BUNDLE_SOCIAL_TEAM_ID=team_... \
+./publish-to-bundle.bb --platforms TIKTOK,YOUTUBE
+```
+
+For Pinterest, provide a board name either with `--pinterest-board` or `BUNDLE_SOCIAL_PINTEREST_BOARD`.
 
 ## Outputs
 
@@ -106,6 +137,7 @@ content-workflow/
 
 - `workflow.bb` runs all steps in order.
 - `server.bb` starts the internal upload/progress/download web UI.
+- `publish-to-bundle.bb` uploads `output.mp4` to bundle.social and creates a post from the generated captions.
 - `transcribe.bb` writes `work/transcript.edn`.
 - `improve-transcript.bb` reads `work/transcript.edn`, asks `pi` to correct the transcript/add subtitle metadata, writes `work/transcript-improved.edn`, and writes `params_transcribed.edn`.
 - `tiktok-caption.bb` reads `params_transcribed.edn` and asks `pi` to write `work/tiktok-caption.txt`.
