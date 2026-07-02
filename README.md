@@ -119,6 +119,13 @@ After a workflow succeeds, the progress page shows a "Publish Instagram Story vi
 
 If your local Storrito server already uses port 8080, start this content workflow UI on another port, for example `PORT=8091 ./server.bb`; the generated video URL uses the current request origin automatically.
 
+If Storrito runs in a container or another network namespace, its `localhost` is not the same as this UI's `localhost`. In that case set a base URL that Storrito can reach, for example:
+
+```bash
+PORT=9876
+CONTENT_WORKFLOW_PUBLIC_BASE_URL=http://172.20.0.1:9876
+```
+
 ## Outputs
 
 The workflow writes files in the project root:

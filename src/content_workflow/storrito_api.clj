@@ -44,8 +44,17 @@
 
 (defn parse-json
   [body]
-  (when-not (str/blank? (str body))
-    (json/parse-string body true)))
+  (when-let [body (non-blank body)]
+    (try
+      (json/parse-string body true)
+      (catch Exception _
+        nil))))
+
+(defn response-message
+  [parsed body]
+  (or (:errorMessage parsed)
+      (non-blank body)
+      "empty response body"))
 
 (defn api-request!
   [procedure payload]
@@ -57,15 +66,21 @@
                              :body (json/generate-string payload)
                              :throw false})
         status (:status response)
-        parsed (parse-json (:body response))]
+        body (:body response)
+        parsed (parse-json body)]
     (if (<= 200 status 299)
-      parsed
+      (or parsed
+          (throw (ex-info (str "Storrito API returned a non-JSON response: "
+                               (response-message parsed body))
+                          {:status status
+                           :procedure procedure
+                           :body body})))
       (throw (ex-info (str "Storrito API request failed: " status " "
-                           (or (:errorMessage parsed) (:body response)))
+                           (response-message parsed body))
                       {:status status
                        :procedure procedure
                        :response parsed
-                       :body (:body response)})))))
+                       :body body})))))
 
 (defn list-instagram-users!
   []

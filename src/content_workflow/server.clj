@@ -1034,9 +1034,15 @@ form.addEventListener('submit', async (event) => {
   (and (= "/public/output.mp4" (:uri request))
        (= (str "token=" public-media-token) (:query-string request))))
 
+(defn public-output-base-url
+  [request]
+  (str/replace (or (some-> (env "CONTENT_WORKFLOW_PUBLIC_BASE_URL") str/trim not-empty)
+                   (request-origin request))
+               #"/+$" ""))
+
 (defn public-output-url
   [request]
-  (str (request-origin request) "/public/output.mp4?token=" public-media-token))
+  (str (public-output-base-url request) "/public/output.mp4?token=" public-media-token))
 
 (defn download-response
   [uri]
