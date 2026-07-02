@@ -6,6 +6,7 @@
             [content-workflow.bundle-social :as bundle]
             [content-workflow.env :as dotenv]
             [content-workflow.publish :as publish]
+            [content-workflow.storrito-api :as storrito-api]
             [hiccup.core :as h]
             [org.httpkit.server :as http]))
 
@@ -18,6 +19,10 @@
 (def frames-dir "frames")
 (def server-log-path "server-workflow.log")
 (def max-request-body (* 1024 1024 1024))
+(defonce public-media-token
+  (str (java.util.UUID/randomUUID)))
+
+(declare public-output-url public-media-request?)
 
 (defonce state
   (atom {:status :idle}))
@@ -125,7 +130,8 @@
    [:a {:href "/"} "New upload"]
    [:a {:href "/jobs/current"} "Current job"]
    [:a {:href "/social-accounts"} "Social accounts"]
-   [:a {:href "/posted-videos"} "Posted videos"]])
+   [:a {:href "/posted-videos"} "Posted videos"]
+   [:a {:href "/storrito-api"} "Storrito API"]])
 
 (defn page
   [title body]
@@ -613,6 +619,45 @@ form.addEventListener('submit', async (event) => {
           [:p.error "Could not load connected social accounts: " (.getMessage e)]
           [:p [:a {:href "/social-accounts"} "Open social accounts"]]])))])
 
+(defn storrito-api-config-warning
+  []
+  (when-let [missing (seq (storrito-api/missing-config))]
+    [:p.error "Storrito API publishing is not configured. Set " (str/join ", " missing) "."]))
+
+(defn instagram-user-select
+  [users selected]
+  (if (seq users)
+    [:div
+     [:label {:for "storrito-instagram-username"} "Instagram account"]
+     [:select {:id "storrito-instagram-username" :name "instagram-username"}
+      (for [{:keys [instagramUsername instagramId]} users]
+        [:option (cond-> {:value instagramUsername}
+                   (= instagramUsername selected) (assoc :selected true))
+         (str instagramUsername " (" instagramId ")")])]]
+    (text-input "storrito-instagram-username" "Instagram username" selected)))
+
+(defn storrito-api-story-form
+  []
+  [:div.panel
+   [:h2 "Publish Instagram Story via Storrito API"]
+   [:p.muted "Schedules the rendered video through the local Storrito API. The video is exposed through a temporary unguessable local URL so the Storrito dev server can fetch it."]
+   (if-let [warning (storrito-api-config-warning)]
+     [:div
+      warning
+      [:p "Create an API credential in Storrito, then set " [:code "STORRITO_API_TOKEN"] " in " [:code ".env.local"] "."]]
+     (try
+       (let [users (storrito-api/list-instagram-users!)
+             selected (or (storrito-api/default-instagram-username)
+                          (:instagramUsername (first users)))]
+         [:form {:method "post" :action "/publish/storrito-instagram-story"}
+          (instagram-user-select users selected)
+          (text-input "storrito-story-link" "Link sticker URL (optional)" (env "STORRITO_INSTAGRAM_STORY_LINK"))
+          [:button {:type "submit" :class "primary-button"} "Publish via Storrito API"]])
+       (catch Exception e
+         [:div
+          [:p.error "Could not load Storrito API Instagram accounts: " (.getMessage e)]
+          [:p "Check " [:code "STORRITO_API_BASE"] " and " [:code "STORRITO_API_TOKEN"] "."]])))])
+
 (defn progress-fragment
   []
   (let [{:keys [status started-at finished-at exit error]} @state
@@ -638,7 +683,8 @@ form.addEventListener('submit', async (event) => {
           (download-link "/download/pinterest-description.txt" "pinterest-description.txt")
           (download-link "/download/pinterest-title.txt" "pinterest-title.txt")]
          (video-preview)
-         (publish-form)])
+         (publish-form)
+         (storrito-api-story-form)])
       [:h2 "Log"]
       [:pre (tail-log)]])))
 
@@ -745,6 +791,146 @@ form.addEventListener('submit', async (event) => {
                              [:p.error (.getMessage e)]
                              [:p [:a {:href "/jobs/current"} "Back to current job"]]]))))))
 
+(defn submit-storrito-instagram-story
+  [request]
+  (if (running?)
+    (response 409 (page "Job running" [:main [:h1 "Job running"] [:p "Wait for the workflow to finish before publishing."]]))
+    (try
+      (let [params (parse-form request)
+            result (storrito-api/publish-output-story! {:video-url (public-output-url request)
+                                                        :instagram-username (get params "instagram-username")
+                                                        :link-url (get params "storrito-story-link")})
+            story-post-uuid (:storyPostUuid result)]
+        (response 200 (page "Instagram Story scheduled"
+                            [:main
+                             [:h1 "Instagram Story scheduled"]
+                             [:p [:strong "Story post UUID: "] [:code story-post-uuid]]
+                             [:p [:strong "Status: "] (:status result)]
+                             [:form {:method "post" :action "/publish/storrito-instagram-story/status"}
+                              [:input {:type "hidden" :name "story-post-uuid" :value story-post-uuid}]
+                              [:button {:type "submit"} "Refresh status"]]
+                             [:p [:a {:href "/jobs/current"} "Back to current job"]]])))
+      (catch Exception e
+        (response 400 (page "Storrito API publish failed"
+                            [:main
+                             [:h1 "Storrito API publish failed"]
+                             [:p.error (.getMessage e)]
+                             [:p [:a {:href "/jobs/current"} "Back to current job"]]]))))))
+
+(defn submit-storrito-instagram-story-status
+  [request]
+  (try
+    (let [params (parse-form request)
+          story-post-uuid (get params "story-post-uuid")
+          result (storrito-api/status-instagram-story! story-post-uuid)]
+      (response 200 (page "Instagram Story status"
+                          [:main
+                           [:h1 "Instagram Story status"]
+                           [:p [:strong "Story post UUID: "] [:code story-post-uuid]]
+                           [:p [:strong "Status: "] (:status result)]
+                           (when-let [error (:errorMessage result)]
+                             [:p.error error])
+                           [:form {:method "post" :action "/publish/storrito-instagram-story/status"}
+                            [:input {:type "hidden" :name "story-post-uuid" :value story-post-uuid}]
+                            [:button {:type "submit"} "Refresh status"]]
+                           [:p [:a {:href "/jobs/current"} "Back to current job"]]])))
+    (catch Exception e
+      (response 400 (page "Could not load Instagram Story status"
+                          [:main
+                           [:h1 "Could not load Instagram Story status"]
+                           [:p.error (.getMessage e)]
+                           [:p [:a {:href "/jobs/current"} "Back to current job"]]])))))
+
+(defn storrito-api-token-summary
+  []
+  (if-let [token (some-> (storrito-api/api-token) str/trim not-empty)]
+    (str (subs token 0 (min 8 (count token))) "…")
+    "not set"))
+
+(defn storrito-api-users-table
+  [users]
+  (if (seq users)
+    [:table
+     [:thead
+      [:tr [:th "Instagram username"] [:th "Instagram ID"]]]
+     [:tbody
+      (for [{:keys [instagramUsername instagramId]} users]
+        [:tr
+         [:td instagramUsername]
+         [:td instagramId]])]]
+    [:p.muted "No connected Instagram accounts returned by the Storrito API."]))
+
+(defn storrito-api-status-panel
+  []
+  [:div.panel
+   [:h2 "Connection status"]
+   [:p [:strong "API base: "] [:code (storrito-api/api-base)]]
+   [:p [:strong "Token: "] (storrito-api-token-summary)]
+   [:p [:strong "Default Instagram username: "]
+    (or (storrito-api/default-instagram-username) [:span.muted "not set"])]
+   (if-let [warning (storrito-api-config-warning)]
+     warning
+     (try
+       (let [users (storrito-api/list-instagram-users!)]
+         [:div
+          [:p [:strong "Status: "] [:span {:style "color: #147a00; font-weight: 700;"} "OK"]]
+          [:p.muted "The API token works and the list-instagram-users procedure responded."]
+          [:h3 "Connected Instagram accounts"]
+          (storrito-api-users-table users)])
+       (catch Exception e
+         [:div
+          [:p.error "Status: API request failed"]
+          [:p.error (.getMessage e)]
+          [:p "Check " [:code "STORRITO_API_BASE"] " and " [:code "STORRITO_API_TOKEN"] "."]])))])
+
+(defn storrito-api-story-status-form
+  ([]
+   (storrito-api-story-status-form nil))
+  ([story-post-uuid]
+   [:div.panel
+    [:h2 "Check Instagram Story post status"]
+    [:p.muted "Enter any storyPostUuid returned by schedule-instagram-story. This only checks status; it does not schedule or publish anything."]
+    [:form {:method "post" :action "/storrito-api/status"}
+     [:label {:for "story-post-uuid"} "Story post UUID"]
+     [:input {:id "story-post-uuid"
+              :name "story-post-uuid"
+              :type "text"
+              :required true
+              :value (or story-post-uuid "")}]
+     [:button {:type "submit"} "Check status"]]]))
+
+(defn storrito-api-page
+  []
+  (page "Storrito API"
+        [:main
+         [:h1 "Storrito API"]
+         [:p "Use this page to verify the local Storrito API configuration and inspect story post status without scheduling a new story."]
+         (storrito-api-status-panel)
+         (storrito-api-story-status-form)]))
+
+(defn submit-storrito-api-status
+  [request]
+  (let [params (parse-form request)
+        story-post-uuid (get params "story-post-uuid")]
+    (try
+      (let [result (storrito-api/status-instagram-story! story-post-uuid)]
+        (response 200 (page "Instagram Story status"
+                            [:main
+                             [:h1 "Instagram Story status"]
+                             [:p [:strong "Story post UUID: "] [:code story-post-uuid]]
+                             [:p [:strong "Status: "] (:status result)]
+                             (when-let [error (:errorMessage result)]
+                               [:p.error error])
+                             (storrito-api-story-status-form story-post-uuid)
+                             [:p [:a {:href "/storrito-api"} "Back to Storrito API"]]])))
+      (catch Exception e
+        (response 400 (page "Could not load Instagram Story status"
+                            [:main
+                             [:h1 "Could not load Instagram Story status"]
+                             [:p.error (.getMessage e)]
+                             (storrito-api-story-status-form story-post-uuid)
+                             [:p [:a {:href "/storrito-api"} "Back to Storrito API"]]]))))))
+
 (defn post-platforms
   [post]
   (->> (:data post)
@@ -843,6 +1029,15 @@ form.addEventListener('submit', async (event) => {
        :body file}
       (response 404 "Not found"))))
 
+(defn public-media-request?
+  [request]
+  (and (= "/public/output.mp4" (:uri request))
+       (= (str "token=" public-media-token) (:query-string request))))
+
+(defn public-output-url
+  [request]
+  (str (request-origin request) "/public/output.mp4?token=" public-media-token))
+
 (defn download-response
   [uri]
   (let [{:keys [path content-type filename]} (downloads uri)
@@ -876,7 +1071,8 @@ form.addEventListener('submit', async (event) => {
 (defn wrap-basic-auth
   [handler]
   (fn [request]
-    (if (valid-credentials? request)
+    (if (or (public-media-request? request)
+            (valid-credentials? request))
       (handler request)
       {:status 401
        :headers {"www-authenticate" "Basic realm=\"Content workflow\""
@@ -892,9 +1088,14 @@ form.addEventListener('submit', async (event) => {
     [:get "/jobs/current"] (response 200 (status-page))
     [:get "/jobs/current/progress"] (response 200 (progress-fragment))
     [:get "/media/output.mp4"] (media-output-response)
+    [:get "/public/output.mp4"] (media-output-response)
     [:get "/social-accounts"] (response 200 (social-accounts-page))
     [:post "/social-accounts/connect"] (connect-social-accounts request)
+    [:get "/storrito-api"] (response 200 (storrito-api-page))
+    [:post "/storrito-api/status"] (submit-storrito-api-status request)
     [:post "/publish"] (submit-publish request)
+    [:post "/publish/storrito-instagram-story"] (submit-storrito-instagram-story request)
+    [:post "/publish/storrito-instagram-story/status"] (submit-storrito-instagram-story-status request)
     [:get "/posted-videos"] (response 200 (posted-videos-page))
     (if (contains? downloads (:uri request))
       (download-response (:uri request))

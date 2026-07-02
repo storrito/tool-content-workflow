@@ -9,6 +9,7 @@
 
 /server-workflow.log
 /input.mp4.upload
+/instagram-session/
 /.env
 /.env.local
 /.cpcache/

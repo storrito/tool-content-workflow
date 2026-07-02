@@ -101,6 +101,24 @@ BUNDLE_SOCIAL_TEAM_ID=team_... \
 
 For Pinterest, provide a board name either with `--pinterest-board` or `BUNDLE_SOCIAL_PINTEREST_BOARD`.
 
+## Instagram Story publishing through the Storrito API
+
+The web UI can schedule the generated `output.mp4` as an Instagram Story through a local Storrito API server. Create/copy an API credential from Storrito's API Credentials page and store it in `.env.local`:
+
+```bash
+STORRITO_API_BASE=http://7414818a-0c58-4865-aa8b-3b43cc96aa93.localhost:8080/api/v1
+STORRITO_API_TOKEN=<credential-id>:<credential-secret>
+STORRITO_INSTAGRAM_USERNAME=<connected-instagram-username>
+# optional Link sticker
+STORRITO_INSTAGRAM_STORY_LINK=https://example.com
+```
+
+Open `/storrito-api` in this workflow UI to verify the API configuration, list connected Instagram accounts, and check any existing `storyPostUuid` status without scheduling a new story.
+
+After a workflow succeeds, the progress page shows a "Publish Instagram Story via Storrito API" form. The content workflow server exposes `output.mp4` through an unguessable local URL so the Storrito dev server can fetch it. In `storrito-server-2`, dev mode allows localhost/private URLs for this API flow; production still blocks private URLs.
+
+If your local Storrito server already uses port 8080, start this content workflow UI on another port, for example `PORT=8091 ./server.bb`; the generated video URL uses the current request origin automatically.
+
 ## Outputs
 
 The workflow writes files in the project root:
